@@ -1,0 +1,93 @@
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
+
+export const useProductStore = create(
+  persist(
+    (set, get) => ({
+      products: [],
+      loading: false,
+      error: null,
+      lastFetchedAt: null, // 👈 cache timestamp
+
+      fetchProducts: async () => {
+        const { products, lastFetchedAt } = get();
+
+        // ⏱ Cache validity: 10 minutes
+        const CACHE_TTL = 10 * 60 * 1000;
+
+        if (
+          products.length > 0 &&
+          lastFetchedAt &&
+          Date.now() - lastFetchedAt < CACHE_TTL
+        ) {
+          // ✅ Use cached data
+          return;
+        }
+
+        try {
+          set({ loading: true, error: null });
+
+          // 🔁 Mock API (replace later)
+          const response = await new Promise((resolve) =>
+            setTimeout(
+              () =>
+                resolve([
+                  {
+                    id: 1,
+                    title: "Air Sneakers",
+                    price: "$129",
+                    image:
+                      "https://images.unsplash.com/photo-1542291026-7eec264c27ff",
+                  },
+                  {
+                    id: 2,
+                    title: "Leather Backpack",
+                    price: "$179",
+                    image:
+                      "https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f",
+                  },
+                  {
+                    id: 3,
+                    title: "Smart Watch",
+                    price: "$249",
+                    image:
+                      "https://images.unsplash.com/photo-1523275335684-37898b6baf30",
+                  },
+                  {
+                    id: 4,
+                    title: "Headphones",
+                    price: "$199",
+                    image:
+                      "https://images.unsplash.com/photo-1518441902113-f3e7c1f5c8c1",
+                  },
+                ]),
+              800
+            )
+          );
+
+          set({
+            products: response,
+            loading: false,
+            lastFetchedAt: Date.now(), // ✅ update cache time
+          });
+        } catch (err) {
+          set({ error: "Failed to load products", loading: false });
+        }
+      },
+
+      // 🔥 Manual cache clear (VERY IMPORTANT)
+      clearCache: () =>
+        set({
+          products: [],
+          lastFetchedAt: null,
+        }),
+    }),
+    {
+      name: "product-cache", // localStorage key
+      partialize: (state) => ({
+        products: state.products,
+        lastFetchedAt: state.lastFetchedAt,
+      }),
+    }
+  )
+);
