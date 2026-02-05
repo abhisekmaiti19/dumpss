@@ -1,206 +1,216 @@
-import { css, keyframes } from "@emotion/css";
+import React, { useState, useRef } from "react";
+import { css } from "@emotion/css";
 
-export default function EmotionsSlider() {
+/* ------------------ DATA ------------------ */
+const products = [
+  {
+    id: 1,
+    title: "Air Sneakers",
+    price: "$129",
+    image: "https://images.unsplash.com/photo-1542291026-7eec264c27ff",
+  },
+  {
+    id: 2,
+    title: "Leather Backpack",
+    price: "$179",
+    image: "https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f",
+  },
+  {
+    id: 3,
+    title: "Smart Watch",
+    price: "$249",
+    image: "https://images.unsplash.com/photo-1523275335684-37898b6baf30",
+  },
+  {
+    id: 4,
+    title: "Headphones",
+    price: "$199",
+    image: "https://images.unsplash.com/photo-1518441902113-f3e7c1f5c8c1",
+  },
+];
+
+/* ------------------ COMPONENT ------------------ */
+export default function ProductCarousel() {
+  const [index, setIndex] = useState(0);
+  const startX = useRef(0);
+
+  const prev = () =>
+    setIndex((i) => (i === 0 ? products.length - 1 : i - 1));
+  const next = () =>
+    setIndex((i) => (i === products.length - 1 ? 0 : i + 1));
+
   return (
-    <section>
-      <div className={emotionsSlider}>
-        {/* Navigation */}
-        <div className={sliderNav}>
-          <div className={sliderNavItem} tabIndex={0}><svg width="16" height="28" viewBox="0 0 16 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-							<path d="M14 26L2 14L14 2" stroke="white" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
-						</svg></div>
-          <div className={sliderNavItem} tabIndex={0}><svg width="16" height="28" viewBox="0 0 16 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-							<path d="M2 26L14 14L2 2" stroke="white" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
-						</svg></div>
-        </div>
+    <div className={carousel}>
+      <h2 className={title}>Featured Products</h2>
 
-        {/* Slider */}
-        <div className="swiper">
-          <div className="swiper-wrapper">
-            <div className={`swiper-slide ${slide}`}>
-              <div className={sliderItem}>
-                <div className="image">
-                  <img
-                    src="https://bato-web-agency.github.io/bato-shared/img/slider-1/slide-1.jpg"
-                    alt="Winds of Change"
-                  />
-                </div>
-
-                <div className="content">
-                  <div className="price">$175</div>
-
-                  <h2>Winds of Change</h2>
-                  <p>
-                    Gentle pink and blue hues remind us of moments when everything
-                    changes for the better.
-                  </p>
-
-                  <a href="/" className={sliderBtn} onClick={(e) => e.preventDefault()}>
-                    <span>View more</span>
-                    <span className="icon" />
-                  </a>
-                </div>
+      <div
+        className={trackWrapper}
+        onTouchStart={(e) => (startX.current = e.touches[0].clientX)}
+        onTouchEnd={(e) => {
+          const diff = startX.current - e.changedTouches[0].clientX;
+          if (diff > 50) next();
+          if (diff < -50) prev();
+        }}
+      >
+        <div
+          className={track}
+          style={{ transform: `translateX(-${index * 100}%)` }}
+        >
+          {products.map((p) => (
+            <div key={p.id} className={card}>
+              <img src={p.image} alt={p.title} />
+              <div className="info">
+                <h3>{p.title}</h3>
+                <p>{p.price}</p>
+                <button>Add to cart</button>
               </div>
             </div>
-          </div>
+          ))}
         </div>
       </div>
-    </section>
+
+      {/* Controls */}
+      <button className={`${navBtn} left`} onClick={prev}>‹</button>
+      <button className={`${navBtn} right`} onClick={next}>›</button>
+
+      {/* Dots */}
+      <div className={dots}>
+        {products.map((_, i) => (
+          <span
+            key={i}
+            className={`${dot} ${i === index ? "active" : ""}`}
+            onClick={() => setIndex(i)}
+          />
+        ))}
+      </div>
+    </div>
   );
 }
 
-/* =========================
-   Animations
-========================= */
+/* ------------------ STYLES ------------------ */
 
-const arrowMove = keyframes`
-  0% { transform: translate(0, 0); }
-  100% { transform: translate(100%, -100%); }
+const carousel = css`
+  max-width: 1100px;
+  margin: auto;
+  padding: 40px 20px;
+  position: relative;
 `;
 
-/* =========================
-   Styles
-========================= */
+const title = css`
+  font-size: 28px;
+  margin-bottom: 20px;
+  text-align: center;
+`;
 
-const emotionsSlider = css`
-  --color-gray: #818181;
-  --color-gray-dark: #1e1e1e;
+const trackWrapper = css`
+  overflow: hidden;
+`;
 
-  position: relative;
-  padding-inline: 98px;
+const track = css`
+  display: flex;
+  transition: transform 0.5s ease;
+`;
 
-  @media (max-width: 767.9px) {
-    padding: 0;
-    margin-inline: -20px;
+const card = css`
+  min-width: 100%;
+  padding: 10px;
+
+  img {
+    width: 100%;
+    height: 280px;
+    object-fit: cover;
+    border-radius: 12px;
+  }
+
+  .info {
+    padding: 16px;
+    text-align: center;
+  }
+
+  h3 {
+    margin: 8px 0;
+    font-size: 20px;
+  }
+
+  p {
+    opacity: 0.7;
+    margin-bottom: 12px;
+  }
+
+  button {
+    background: #000;
+    color: #fff;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+  }
+
+  @media (hover: hover) {
+    button:hover {
+      transform: scale(1.05);
+    }
+  }
+
+  @media (hover: none) {
+    button:active {
+      transform: scale(0.95);
+    }
+  }
+
+  @media (min-width: 768px) {
+    min-width: 50%;
+  }
+
+  @media (min-width: 1024px) {
+    min-width: 33.333%;
   }
 `;
 
-const sliderNav = css`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+const navBtn = css`
   position: absolute;
-  inset: 0;
   top: 50%;
   transform: translateY(-50%);
-  pointer-events: none;
+  background: #000;
+  color: white;
+  border: none;
+  font-size: 28px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  cursor: pointer;
 
-  @media (max-width: 767.9px) {
+  &.left {
+    left: 10px;
+  }
+
+  &.right {
+    right: 10px;
+  }
+
+  @media (max-width: 767px) {
     display: none;
   }
 `;
 
-const sliderNavItem = css`
-  width: 48px;
-  aspect-ratio: 1;
+const dots = css`
   display: flex;
-  align-items: center;
   justify-content: center;
-  pointer-events: auto;
+  margin-top: 16px;
+  gap: 8px;
+`;
+
+const dot = css`
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ccc;
   cursor: pointer;
-  transition: all 0.3s ease;
 
-  @media (hover: hover) and (pointer: fine) {
-    &:hover {
-      color: #4da3ff;
-    }
-  }
-
-  @media (hover: none) {
-    &:active {
-      color: #4da3ff;
-    }
-  }
-`;
-
-const slide = css`
-  display: flex;
-  align-items: center;
-  min-height: 550px;
-`;
-
-const sliderItem = css`
-  width: calc(100dvw - 60px);
-  max-width: 400px;
-  background: var(--color-gray-dark);
-  border-radius: 10px;
-  overflow: hidden;
-
-  .image {
-    aspect-ratio: 400 / 270;
-    overflow: hidden;
-  }
-
-  img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-
-  .content {
-    padding: 30px 20px;
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-  }
-
-  h2 {
-    font-size: 20px;
-    margin: 0;
-  }
-
-  p {
-    font-size: 16px;
-    opacity: 0.7;
-  }
-
-  .price {
-    font-size: 22px;
-    font-weight: 600;
-  }
-`;
-
-const sliderBtn = css`
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 18px;
-  color: white;
-  text-decoration: none;
-
-  .icon {
+  &.active {
+    background: #000;
     width: 24px;
-    aspect-ratio: 1;
-    position: relative;
-    overflow: hidden;
-  }
-
-  .icon::before,
-  .icon::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: url("https://bato-web-agency.github.io/bato-shared/img/slider-1/icon-btn-arrow.svg")
-      center / cover no-repeat;
-  }
-
-  .icon::after {
-    transform: translate(-100%, 100%);
-  }
-
-  /* Hover animation (desktop) */
-  @media (hover: hover) and (pointer: fine) {
-    &:hover .icon::before,
-    &:hover .icon::after {
-      animation: ${arrowMove} 0.4s ease forwards;
-    }
-  }
-
-  /* Active animation (mobile) */
-  @media (hover: none) {
-    &:active .icon::before,
-    &:active .icon::after {
-      animation: ${arrowMove} 0.4s ease forwards;
-    }
+    border-radius: 6px;
   }
 `;
