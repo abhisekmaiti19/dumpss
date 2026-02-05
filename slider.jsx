@@ -31,6 +31,9 @@ const products = [
 
 export default function ProductCarousel() {
   const wrapperRef = useRef(null);
+  const intervalRef = useRef(null);
+  const isPaused = useRef(false);
+
   const [index, setIndex] = useState(1);
   const [animate, setAnimate] = useState(true);
   const [slideWidth, setSlideWidth] = useState(0);
@@ -42,10 +45,9 @@ export default function ProductCarousel() {
     products[0],
   ];
 
-  /* 🔥 Calculate actual slide width */
+  /* ---------- slide width ---------- */
   useEffect(() => {
     const resize = () => {
-      if (!wrapperRef.current) return;
       const visible =
         window.innerWidth >= 1024 ? 3 :
         window.innerWidth >= 768 ? 2 : 1;
@@ -57,6 +59,26 @@ export default function ProductCarousel() {
     window.addEventListener("resize", resize);
     return () => window.removeEventListener("resize", resize);
   }, []);
+
+  /* ---------- auto scroll ---------- */
+  useEffect(() => {
+    startAutoScroll();
+    return stopAutoScroll;
+  }, []);
+
+  const startAutoScroll = () => {
+    stopAutoScroll();
+    intervalRef.current = setInterval(() => {
+      if (!isPaused.current) next();
+    }, 3000);
+  };
+
+  const stopAutoScroll = () => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+  };
 
   const next = () => {
     setAnimate(true);
@@ -83,7 +105,14 @@ export default function ProductCarousel() {
     <div className={carousel}>
       <h2 className={title}>Featured Products</h2>
 
-      <div ref={wrapperRef} className={trackWrapper}>
+      <div
+        ref={wrapperRef}
+        className={trackWrapper}
+        onMouseEnter={() => (isPaused.current = true)}
+        onMouseLeave={() => (isPaused.current = false)}
+        onTouchStart={() => (isPaused.current = true)}
+        onTouchEnd={() => (isPaused.current = false)}
+      >
         <div
           className={track}
           onTransitionEnd={onTransitionEnd}
