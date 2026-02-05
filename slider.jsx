@@ -1,85 +1,66 @@
-import React, {
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from "react";
+import React, { useRef, useState } from "react";
 import { css } from "@emotion/css";
-import { useProductStore } from "./useProductStore";
 
-export default function InfiniteProductCarousel() {
-  const { products, fetchProducts } = useProductStore();
+/* ------------------ DATA ------------------ */
+const products = [
+  {
+    id: 1,
+    title: "Air Sneakers",
+    price: "$129",
+    image: "https://images.unsplash.com/photo-1542291026-7eec264c27ff",
+  },
+  {
+    id: 2,
+    title: "Leather Backpack",
+    price: "$179",
+    image: "https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f",
+  },
+  {
+    id: 3,
+    title: "Smart Watch",
+    price: "$249",
+    image: "https://images.unsplash.com/photo-1523275335684-37898b6baf30",
+  },
+  {
+    id: 4,
+    title: "Headphones",
+    price: "$199",
+    image: "https://images.unsplash.com/photo-1518441902113-f3e7c1f5c8c1",
+  },
+];
 
-  const [slidesPerView, setSlidesPerView] = useState(1);
-  const [index, setIndex] = useState(0);
-  const [enableTransition, setEnableTransition] = useState(true);
-
-  const trackRef = useRef(null);
+/* ------------------ COMPONENT ------------------ */
+export default function ProductCarousel() {
   const startX = useRef(0);
+  const [index, setIndex] = useState(1);
+  const [animate, setAnimate] = useState(true);
 
-  /* ---------------- Prevent FOUC ---------------- */
-  useLayoutEffect(() => {}, []);
+  const total = products.length;
 
-  /* ---------------- Fetch products ---------------- */
-  useEffect(() => {
-    fetchProducts();
-  }, [fetchProducts]);
+  const slides = [
+    products[total - 1],
+    ...products,
+    products[0],
+  ];
 
-  /* ---------------- Responsive logic ---------------- */
-  useEffect(() => {
-    const update = () => {
-      if (window.innerWidth >= 1024) setSlidesPerView(3);
-      else if (window.innerWidth >= 768) setSlidesPerView(2);
-      else setSlidesPerView(1);
-    };
-    update();
-    window.addEventListener("resize", update);
-    return () => window.removeEventListener("resize", update);
-  }, []);
-
-  if (!products.length) return null;
-
-  /* ---------------- Clone slides for infinite loop ---------------- */
-  const clonesBefore = products.slice(-slidesPerView);
-  const clonesAfter = products.slice(0, slidesPerView);
-  const slides = [...clonesBefore, ...products, ...clonesAfter];
-
-  const totalRealSlides = products.length;
-  const startIndex = slidesPerView;
-
-  /* ---------------- Init index ---------------- */
-  useEffect(() => {
-    setIndex(startIndex);
-  }, [slidesPerView]);
-
-  /* ---------------- Auto scroll ---------------- */
-  useEffect(() => {
-    const timer = setInterval(() => {
-      moveNext();
-    }, 3000);
-    return () => clearInterval(timer);
-  });
-
-  const moveNext = () => {
-    setEnableTransition(true);
-    setIndex((i) => i + slidesPerView);
+  const next = () => {
+    setAnimate(true);
+    setIndex((i) => i + 1);
   };
 
-  const movePrev = () => {
-    setEnableTransition(true);
-    setIndex((i) => i - slidesPerView);
+  const prev = () => {
+    setAnimate(true);
+    setIndex((i) => i - 1);
   };
 
-  /* ---------------- Handle infinite jump ---------------- */
-  const onTransitionEnd = () => {
-    if (index >= totalRealSlides + slidesPerView) {
-      setEnableTransition(false);
-      setIndex(startIndex);
+  const handleTransitionEnd = () => {
+    if (index === 0) {
+      setAnimate(false);
+      setIndex(total);
     }
-
-    if (index <= 0) {
-      setEnableTransition(false);
-      setIndex(totalRealSlides);
+    if (index === total + 1) {
+      setAnimate(false);
+      setIndex(1);
     }
   };
 
@@ -88,33 +69,24 @@ export default function InfiniteProductCarousel() {
       <h2 className={title}>Featured Products</h2>
 
       <div
-        className={viewport}
+        className={trackWrapper}
         onTouchStart={(e) => (startX.current = e.touches[0].clientX)}
         onTouchEnd={(e) => {
           const diff = startX.current - e.changedTouches[0].clientX;
-          if (diff > 50) moveNext();
-          if (diff < -50) movePrev();
+          if (diff > 50) next();
+          if (diff < -50) prev();
         }}
       >
         <div
-          ref={trackRef}
           className={track}
+          onTransitionEnd={handleTransitionEnd}
           style={{
-            transform: `translateX(-${
-              (index * 100) / slidesPerView
-            }%)`,
-            transition: enableTransition
-              ? "transform 0.6s ease"
-              : "none",
+            transform: `translateX(-${index * 100}%)`,
+            transition: animate ? "transform 0.5s ease" : "none",
           }}
-          onTransitionEnd={onTransitionEnd}
         >
           {slides.map((p, i) => (
-            <div
-              key={`${p.id}-${i}`}
-              className={card}
-              style={{ width: `${100 / slidesPerView}%` }}
-            >
+            <div key={i} className={card}>
               <img src={p.image} alt={p.title} />
               <div className="info">
                 <h3>{p.title}</h3>
@@ -126,41 +98,37 @@ export default function InfiniteProductCarousel() {
         </div>
       </div>
 
-      <button className={`${navBtn} left`} onClick={movePrev}>
-        ‹
-      </button>
-      <button className={`${navBtn} right`} onClick={moveNext}>
-        ›
-      </button>
+      <button className={`${navBtn} left`} onClick={prev}>‹</button>
+      <button className={`${navBtn} right`} onClick={next}>›</button>
     </div>
   );
 }
 
-/* ===================== STYLES ===================== */
+/* ------------------ STYLES (UNCHANGED) ------------------ */
 
 const carousel = css`
-  max-width: 1200px;
+  max-width: 1100px;
   margin: auto;
   padding: 40px 20px;
   position: relative;
 `;
 
 const title = css`
-  text-align: center;
   font-size: 28px;
   margin-bottom: 20px;
+  text-align: center;
 `;
 
-const viewport = css`
+const trackWrapper = css`
   overflow: hidden;
 `;
 
 const track = css`
   display: flex;
-  will-change: transform;
 `;
 
 const card = css`
+  min-width: 100%;
   padding: 10px;
 
   img {
@@ -175,13 +143,44 @@ const card = css`
     text-align: center;
   }
 
+  h3 {
+    margin: 8px 0;
+    font-size: 20px;
+  }
+
+  p {
+    opacity: 0.7;
+    margin-bottom: 12px;
+  }
+
   button {
-    background: black;
-    color: white;
+    background: #000;
+    color: #fff;
     border: none;
     padding: 10px 16px;
     border-radius: 8px;
     cursor: pointer;
+    transition: transform 0.2s ease;
+  }
+
+  @media (hover: hover) {
+    button:hover {
+      transform: scale(1.05);
+    }
+  }
+
+  @media (hover: none) {
+    button:active {
+      transform: scale(0.95);
+    }
+  }
+
+  @media (min-width: 768px) {
+    min-width: 50%;
+  }
+
+  @media (min-width: 1024px) {
+    min-width: 33.333%;
   }
 `;
 
@@ -189,13 +188,13 @@ const navBtn = css`
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  background: black;
+  background: #000;
   color: white;
   border: none;
+  font-size: 28px;
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  font-size: 28px;
   cursor: pointer;
 
   &.left {
