@@ -1,7 +1,7 @@
-import React, { useState, useRef } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { css } from "@emotion/css";
 
-/* ------------------ DATA ------------------ */
+/* ---------------- DATA ---------------- */
 const products = [
   {
     id: 1,
@@ -29,22 +29,52 @@ const products = [
   },
 ];
 
-/* ------------------ COMPONENT ------------------ */
 export default function ProductCarousel() {
-  const [index, setIndex] = useState(0);
+  const [ready, setReady] = useState(false);
+  const [page, setPage] = useState(0);
+  const [slidesPerView, setSlidesPerView] = useState(1);
   const startX = useRef(0);
 
-  const prev = () =>
-    setIndex((i) => (i === 0 ? products.length - 1 : i - 1));
-  const next = () =>
-    setIndex((i) => (i === products.length - 1 ? 0 : i + 1));
+  /* ⛔ Prevent first unstyled paint */
+  useLayoutEffect(() => {
+    setReady(true);
+  }, []);
+
+  /* Responsive logic */
+  useEffect(() => {
+    const update = () => {
+      if (window.innerWidth >= 1024) setSlidesPerView(3);
+      else if (window.innerWidth >= 768) setSlidesPerView(2);
+      else setSlidesPerView(1);
+    };
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+
+  const pages = Math.ceil(products.length / slidesPerView);
+
+  /* Auto-scroll */
+  useEffect(() => {
+    if (!ready) return;
+    const timer = setInterval(() => {
+      setPage((p) => (p + 1) % pages);
+    }, 3000);
+    return () => clearInterval(timer);
+  }, [pages, ready]);
+
+  const next = () => setPage((p) => (p + 1) % pages);
+  const prev = () => setPage((p) => (p - 1 + pages) % pages);
+
+  /* ⛔ Hide until styles are ready */
+  if (!ready) return null;
 
   return (
     <div className={carousel}>
       <h2 className={title}>Featured Products</h2>
 
       <div
-        className={trackWrapper}
+        className={viewport}
         onTouchStart={(e) => (startX.current = e.touches[0].clientX)}
         onTouchEnd={(e) => {
           const diff = startX.current - e.changedTouches[0].clientX;
@@ -54,10 +84,14 @@ export default function ProductCarousel() {
       >
         <div
           className={track}
-          style={{ transform: `translateX(-${index * 100}%)` }}
+          style={{ transform: `translateX(-${page * 100}%)` }}
         >
           {products.map((p) => (
-            <div key={p.id} className={card}>
+            <div
+              key={p.id}
+              className={card}
+              style={{ width: `${100 / slidesPerView}%` }}
+            >
               <img src={p.image} alt={p.title} />
               <div className="info">
                 <h3>{p.title}</h3>
@@ -69,17 +103,15 @@ export default function ProductCarousel() {
         </div>
       </div>
 
-      {/* Controls */}
       <button className={`${navBtn} left`} onClick={prev}>‹</button>
       <button className={`${navBtn} right`} onClick={next}>›</button>
 
-      {/* Dots */}
       <div className={dots}>
-        {products.map((_, i) => (
+        {Array.from({ length: pages }).map((_, i) => (
           <span
             key={i}
-            className={`${dot} ${i === index ? "active" : ""}`}
-            onClick={() => setIndex(i)}
+            className={`${dot} ${i === page ? "active" : ""}`}
+            onClick={() => setPage(i)}
           />
         ))}
       </div>
@@ -87,7 +119,7 @@ export default function ProductCarousel() {
   );
 }
 
-/* ------------------ STYLES ------------------ */
+/* ---------------- STYLES ---------------- */
 
 const carousel = css`
   max-width: 1100px;
@@ -97,22 +129,21 @@ const carousel = css`
 `;
 
 const title = css`
+  text-align: center;
   font-size: 28px;
   margin-bottom: 20px;
-  text-align: center;
 `;
 
-const trackWrapper = css`
+const viewport = css`
   overflow: hidden;
 `;
 
 const track = css`
   display: flex;
-  transition: transform 0.5s ease;
+  transition: transform 0.6s ease;
 `;
 
 const card = css`
-  min-width: 100%;
   padding: 10px;
 
   img {
@@ -127,19 +158,9 @@ const card = css`
     text-align: center;
   }
 
-  h3 {
-    margin: 8px 0;
-    font-size: 20px;
-  }
-
-  p {
-    opacity: 0.7;
-    margin-bottom: 12px;
-  }
-
   button {
-    background: #000;
-    color: #fff;
+    background: black;
+    color: white;
     border: none;
     padding: 10px 16px;
     border-radius: 8px;
@@ -158,27 +179,19 @@ const card = css`
       transform: scale(0.95);
     }
   }
-
-  @media (min-width: 768px) {
-    min-width: 50%;
-  }
-
-  @media (min-width: 1024px) {
-    min-width: 33.333%;
-  }
 `;
 
 const navBtn = css`
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  background: #000;
+  background: black;
   color: white;
   border: none;
-  font-size: 28px;
   width: 44px;
   height: 44px;
   border-radius: 50%;
+  font-size: 28px;
   cursor: pointer;
 
   &.left {
@@ -197,8 +210,8 @@ const navBtn = css`
 const dots = css`
   display: flex;
   justify-content: center;
-  margin-top: 16px;
   gap: 8px;
+  margin-top: 16px;
 `;
 
 const dot = css`
@@ -209,8 +222,8 @@ const dot = css`
   cursor: pointer;
 
   &.active {
-    background: #000;
     width: 24px;
     border-radius: 6px;
+    background: black;
   }
 `;
