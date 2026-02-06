@@ -1,35 +1,11 @@
+/* eslint-disable prettier/prettier */
 import React, { useRef, useState, useEffect } from "react";
 import { css } from "@emotion/css";
+import { createAmplanceLink } from "../../../../../config/utils";
+import {getAppOrigin} from '@salesforce/pwa-kit-react-sdk/utils/url'
 
-/* ------------------ DATA ------------------ */
-const products = [
-  {
-    id: 1,
-    title: "Air Sneakers",
-    price: "$129",
-    image: "https://images.unsplash.com/photo-1542291026-7eec264c27ff",
-  },
-  {
-    id: 2,
-    title: "Leather Backpack",
-    price: "$179",
-    image: "https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f",
-  },
-  {
-    id: 3,
-    title: "Smart Watch",
-    price: "$249",
-    image: "https://images.unsplash.com/photo-1523275335684-37898b6baf30",
-  },
-  {
-    id: 4,
-    title: "Headphones",
-    price: "$199",
-    image: "https://images.unsplash.com/photo-1518441902113-f3e7c1f5c8c1",
-  },
-];
-
-export default function ProductCarousel() {
+export default function Carousel() {
+ const isTransitioning = useRef(false);
   const wrapperRef = useRef(null);
   const intervalRef = useRef(null);
   const isPaused = useRef(false);
@@ -38,12 +14,54 @@ export default function ProductCarousel() {
   const [animate, setAnimate] = useState(true);
   const [slideWidth, setSlideWidth] = useState(0);
 
-  const total = products.length;
-  const slides = [
-    products[total - 1],
-    ...products,
-    products[0],
-  ];
+  const [image, setImage] = useState(null);
+  const [total, setTotal] = useState(0);
+  const [slides, setSlides] = useState(null)
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const siteURI = `${getAppOrigin()}/mobify/proxy`;
+
+  function prepareData(dataArray){
+     let resArr = [];
+     dataArray.map((item,i)=>{
+         resArr.push({
+             id:item.imageblock.id,
+             image: createAmplanceLink('media', `${getAppOrigin()}/mobify/proxy/amp-media`,  item.imageblock.endpoint, item.imageblock.name),
+             title: item.topLine
+         })
+     })
+     return resArr;
+  }
+    
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await fetch(`${createAmplanceLink('',siteURI,'content/id','c879d318-3fd9-472c-bf55-67dbe59672a2')}`);
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const result = await response.json();
+        console.log(result);
+        if(result && result.content && result.content.sliderContentDesktop){
+            setImage(prepareData(result.content.sliderContentDesktop));
+            setIsLoading(false);
+            console.log(image);
+            setTotal(image.length);
+            setSlides([
+              image[total - 1],
+              ...image,
+              image[0],
+               ...image ])
+               console.log(slides)
+        }
+      } catch (error) {
+        setError(error);
+      }
+    };
+
+    fetchData();
+    // The empty dependency array [] ensures this effect runs only once after the initial render
+  }, []); 
 
   /* ---------- slide width ---------- */
   useEffect(() => {
@@ -69,7 +87,7 @@ export default function ProductCarousel() {
   const startAutoScroll = () => {
     stopAutoScroll();
     intervalRef.current = setInterval(() => {
-      if (!isPaused.current) next();
+      if (!isPaused.current && !isTransitioning.current) next();
     }, 3000);
   };
 
@@ -81,23 +99,40 @@ export default function ProductCarousel() {
   };
 
   const next = () => {
+    if(isTransitioning.current) return;
+    isTransitioning.current = true;
     setAnimate(true);
     setIndex((i) => i + 1);
   };
 
   const prev = () => {
+    if(isTransitioning.current) return;
+    isTransitioning.current = true;
     setAnimate(true);
     setIndex((i) => i - 1);
   };
 
   const onTransitionEnd = () => {
+    isTransitioning.current = false;
     if (index === 0) {
       setAnimate(false);
       setIndex(total);
+
+      requestAnimationFrame(()=>{
+        requestAnimationFrame(()=>{
+            setAnimate(true);
+        })
+      })
     }
     if (index === total + 1) {
       setAnimate(false);
       setIndex(1);
+
+      requestAnimationFrame(()=>{
+        requestAnimationFrame(()=>{
+            setAnimate(true);
+        })
+      })
     }
   };
 
@@ -121,13 +156,11 @@ export default function ProductCarousel() {
             transition: animate ? "transform 0.5s ease" : "none",
           }}
         >
-          {slides.map((p, i) => (
-            <div key={i} className={card}>
-              <img src={p.image} alt={p.title} />
+          {slides && slides.map((item) => (
+            <div key={item.id} className={card}>
+              <img src={item.image} alt={item.title} />
               <div className="info">
-                <h3>{p.title}</h3>
-                <p>{p.price}</p>
-                <button>Add to cart</button>
+                <h3>{item.title}</h3>
               </div>
             </div>
           ))}
@@ -139,3 +172,109 @@ export default function ProductCarousel() {
     </div>
   );
 }
+
+/* ------------------ STYLES (UNCHANGED) ------------------ */
+
+const carousel = css`
+  max-width: 1100px;
+  margin: auto;
+  padding: 40px 20px;
+  position: relative;
+`;
+
+const title = css`
+  font-size: 28px;
+  margin-bottom: 20px;
+  text-align: center;
+`;
+
+const trackWrapper = css`
+  overflow: hidden;
+`;
+
+const track = css`
+  display: flex;
+`;
+
+const card = css`
+  min-width: 100%;
+  padding: 10px;
+
+  img {
+    width: 100%;
+    height: 280px;
+    object-fit: cover;
+    border-radius: 12px;
+  }
+
+  .info {
+    padding: 16px;
+    text-align: center;
+  }
+
+  h3 {
+    margin: 8px 0;
+    font-size: 20px;
+  }
+
+  p {
+    opacity: 0.7;
+    margin-bottom: 12px;
+  }
+
+  button {
+    background: #000;
+    color: #fff;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+  }
+
+  @media (hover: hover) {
+    button:hover {
+      transform: scale(1.05);
+    }
+  }
+
+  @media (hover: none) {
+    button:active {
+      transform: scale(0.95);
+    }
+  }
+
+  @media (min-width: 768px) {
+    min-width: 50%;
+  }
+
+  @media (min-width: 1024px) {
+    min-width: 33.333%;
+  }
+`;
+
+const navBtn = css`
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: #000;
+  color: white;
+  border: none;
+  font-size: 28px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  cursor: pointer;
+
+  &.left {
+    left: 10px;
+  }
+
+  &.right {
+    right: 10px;
+  }
+
+  @media (max-width: 767px) {
+    display: none;
+  }
+`;
