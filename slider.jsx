@@ -5,41 +5,40 @@ import { createAmplanceLink } from "../../../../../config/utils";
 import { getAppOrigin } from "@salesforce/pwa-kit-react-sdk/utils/url";
 
 export default function Carousel() {
+  const isTransitioning = useRef(false);
   const wrapperRef = useRef(null);
   const intervalRef = useRef(null);
   const isPaused = useRef(false);
-  const isTransitioning = useRef(false);
 
   const [index, setIndex] = useState(1);
   const [animate, setAnimate] = useState(true);
   const [slideWidth, setSlideWidth] = useState(0);
 
-  const [images, setImages] = useState([]);
+  const [image, setImage] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
   const siteURI = `${getAppOrigin()}/mobify/proxy`;
 
   /* ---------- prepare data ---------- */
-  const prepareData = (data = []) =>
-    data.map((item) => ({
-      id: item.imageblock?.id,
+  function prepareData(dataArray = []) {
+    return dataArray.map((item) => ({
+      id: item.imageblock.id,
       image: createAmplanceLink(
         "media",
         `${getAppOrigin()}/mobify/proxy/amp-media`,
-        item.imageblock?.endpoint,
-        item.imageblock?.name
+        item.imageblock.endpoint,
+        item.imageblock.name
       ),
       title: item.topLine
     }));
+  }
 
   /* ---------- fetch data ---------- */
   useEffect(() => {
-    let mounted = true;
-
     const fetchData = async () => {
       try {
-        const res = await fetch(
+        const response = await fetch(
           createAmplanceLink(
             "",
             siteURI,
@@ -48,38 +47,33 @@ export default function Carousel() {
           )
         );
 
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        if (!response.ok) throw new Error(response.status);
 
-        const json = await res.json();
-        const data = prepareData(json?.content?.sliderContentDesktop);
+        const result = await response.json();
+        const data = prepareData(result?.content?.sliderContentDesktop);
 
-        if (mounted) {
-          setImages(data);
-          setIsLoading(false);
-        }
+        setImage(data);
+        setIsLoading(false);
       } catch (e) {
-        if (mounted) {
-          setError(e.message);
-          setIsLoading(false);
-        }
+        setError(e);
+        setIsLoading(false);
       }
     };
 
     fetchData();
-    return () => (mounted = false);
   }, []);
 
   /* ---------- derived state ---------- */
-  const total = images.length;
+  const total = image.length;
 
   const slides = useMemo(() => {
     if (!total) return [];
     return [
-      images[total - 1],
-      ...images,
-      images[0]
+      image[total - 1],
+      ...image,
+      image[0]
     ];
-  }, [images, total]);
+  }, [image, total]);
 
   /* ---------- slide width ---------- */
   useEffect(() => {
@@ -98,9 +92,11 @@ export default function Carousel() {
     return () => window.removeEventListener("resize", resize);
   }, []);
 
-  /* ---------- auto scroll ---------- */
+  /* ---------- auto scroll (FIXED) ---------- */
   useEffect(() => {
-    if (!total) return;
+    if (!total || !slideWidth) return;
+
+    clearInterval(intervalRef.current);
 
     intervalRef.current = setInterval(() => {
       if (!isPaused.current && !isTransitioning.current) {
@@ -109,7 +105,7 @@ export default function Carousel() {
     }, 3000);
 
     return () => clearInterval(intervalRef.current);
-  }, [total]);
+  }, [total, slideWidth]);
 
   /* ---------- navigation ---------- */
   const next = () => {
@@ -126,6 +122,7 @@ export default function Carousel() {
     setIndex((i) => i - 1);
   };
 
+  /* ---------- infinite loop ---------- */
   const onTransitionEnd = () => {
     isTransitioning.current = false;
 
@@ -143,8 +140,8 @@ export default function Carousel() {
   };
 
   /* ---------- guards ---------- */
-  if (isLoading) return <div>Loading carousel…</div>;
-  if (error) return <div>Error: {error}</div>;
+  if (isLoading) return null;
+  if (error) return null;
   if (!total) return null;
 
   return (
@@ -167,8 +164,8 @@ export default function Carousel() {
             transition: animate ? "transform 0.5s ease" : "none"
           }}
         >
-          {slides.map((item) => (
-            <div key={item.id} className={card}>
+          {slides.map((item, i) => (
+            <div key={`${item.id}-${i}`} className={card}>
               <img src={item.image} alt={item.title} />
               <div className="info">
                 <h3>{item.title}</h3>
